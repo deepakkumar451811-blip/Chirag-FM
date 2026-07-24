@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DKLR AI Voice Studio</title>
+    <style>
+        body {
+            font-family: 'Poppins', sans-serif;
+            background-color: #0d0d11;
+            color: #ffffff;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 15px;
+        }
+        .container {
+            background: #181824;
+            padding: 25px;
+            border-radius: 16px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.8);
+            width: 100%;
+            max-width: 500px;
+            border: 1px solid #2a2a3d;
+        }
+        .logo { text-align: center; font-size: 24px; font-weight: bold; color: #ff9800; margin-bottom: 5px; }
+        .subtitle { text-align: center; color: #888; font-size: 13px; margin-bottom: 20px; }
+        label { font-size: 13px; color: #aaa; display: block; margin-top: 14px; font-weight: 500; }
+        textarea, select, input[type="file"], button {
+            width: 100%;
+            padding: 12px;
+            margin-top: 6px;
+            border-radius: 8px;
+            border: 1px solid #333;
+            box-sizing: border-box;
+            font-size: 14px;
+            background: #222233;
+            color: #fff;
+        }
+        textarea { height: 100px; resize: vertical; }
+        button {
+            background: linear-gradient(135deg, #ff9800, #e65100);
+            color: #fff;
+            font-weight: bold;
+            border: none;
+            cursor: pointer;
+            margin-top: 22px;
+            font-size: 16px;
+            box-shadow: 0 4px 15px rgba(255, 152, 0, 0.3);
+        }
+        button:hover { opacity: 0.9; }
+        .badge { background: #ff9800; color: #000; padding: 2px 6px; border-radius: 4px; font-size: 10px; font-weight: bold; vertical-align: middle; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="logo">🎙️ DKLR AI VOICE</div>
+    <div class="subtitle">Pocket FM Style Story & Video Generator</div>
+    
+    <form action="/generate" method="POST" enctype="multipart/form-data">
+        <label>कहानी की स्क्रिप्ट लिखें (Script):</label>
+        <textarea name="text" placeholder="यहाँ अपनी कहानी या डायलॉग लिखें..." required></textarea>
+
+        <label>AI आवाज़ चुनिए (Voice Selection):</label>
+        <select name="voice">
+            <option value="hi_male">🎙️ Hindi - Madhur (Pocket FM Male Storyteller)</option>
+            <option value="hi_female">🎙️ Hindi - Swara (Emotional Female Voice)</option>
+            <option value="en_male">🎙️ English - Guy (Male Voice)</option>
+            <option value="en_female">🎙️ English - Jenny (Female Voice)</option>
+        </select>
+
+        <label>🎙️ Voice Cloning (अपनी या किसी की आवाज़ अपलोड करें) <span class="badge">NEW</span>:</label>
+        <input type="file" name="clone_audio" accept="audio/*">
+
+        <label>🎬 एनिमेटेड कैरेक्टर चुनें (Character Style):</label>
+        <select name="character">
+            <option value="human">🧍‍♂️ Realistic Human Avatar (3D Cinematic)</option>
+            <option value="anime">🦸‍♂️ Anime Character (Japanese Manga Style)</option>
+            <option value="poster">🖼️ Pocket FM Studio Official Poster</option>
+        </select>
+
+        <label>📦 आउटपुट फॉर्मेट (Output Format):</label>
+        <select name="format">
+            <option value="mp3">🎵 MP3 Audio (Pure Voice)</option>
+            <option value="mp3_bgm">🎶 MP3 Audio + Story BGM (Pocket FM Style)</option>
+            <option value="mp4_video">🎬 MP4 Character Animated Story Video</option>
+        </select>
+
+        <button type="submit">🚀 Generate DKLR Story Video</button>
+    </form>
+</div>
+
+</body>
+</html>
