@@ -34,7 +34,7 @@ def enhance_audio(input_audio, output_audio):
     cmd = [
         'ffmpeg', '-y',
         '-i', input_audio,
-        '-af', 'highpass=f=80, lowpass=f=12000, volume=1.5',
+        '-af', 'volume=1.5',
         '-c:a', 'libmp3lame',
         '-b:a', '192k',
         output_audio
@@ -59,15 +59,13 @@ def create_character_video(audio_file, video_output, character_type):
             video_output
         ]
     else:
+        # क्रैश-प्रूफ कलर बैकग्राउंड (बिना ड्रॉटेक्स्ट रिस्क के)
         bg_color = "0x1a0d2b" if character_type == 'anime' else "0x0d1a2b"
-        title_text = "DKLR ANIME STORY" if character_type == 'anime' else "DKLR HUMAN STORY"
-        
         cmd = [
             'ffmpeg', '-y',
             '-f', 'lavfi',
             '-i', f'color=c={bg_color}:s=720x1280:r=25',
             '-i', audio_file,
-            '-vf', f"drawtext=text='{title_text}':fontcolor=white:fontsize=40:x=(w-text_w)/2:y=(h-text_h)/2",
             '-c:v', 'libx264',
             '-c:a', 'aac',
             '-b:a', '192k',
@@ -84,16 +82,20 @@ def index():
 
 @app.route('/preview_voice', methods=['POST'])
 def preview_voice():
-    voice_key = request.form.get('voice', 'hi_swara')
-    preview_raw = "static/preview_raw.mp3"
-    preview_file = "static/preview.mp3"
-    os.makedirs('static', exist_ok=True)
-    
-    text = PREVIEW_TEXTS.get(voice_key, "नमस्कार, चिराग एफएम में आपका स्वागत है।")
-    asyncio.run(generate_speech(text, voice_key, "+0", preview_raw))
-    enhance_audio(preview_raw, preview_file)
-    
-    return send_file(preview_file)
+    try:
+        voice_key = request.form.get('voice', 'hi_swara')
+        preview_raw = "static/preview_raw.mp3"
+        preview_file = "static/preview.mp3"
+        os.makedirs('static', exist_ok=True)
+        
+        text = PREVIEW_TEXTS.get(voice_key, "नमस्कार, चिराग एफएम में आपका स्वागत है।")
+        asyncio.run(generate_speech(text, voice_key, "+0", preview_raw))
+        enhance_audio(preview_raw, preview_file)
+        
+        return send_file(preview_file)
+    except Exception as e:
+        print(f"Preview Error: {str(e)}")
+        return str(e), 500
 
 @app.route('/generate', methods=['POST'])
 def generate():
@@ -114,13 +116,16 @@ def generate():
         
         os.makedirs('static', exist_ok=True)
 
+        # 1. ऑडियो जनरेट करें
         asyncio.run(generate_speech(text, voice, speed, raw_audio))
         
+        # 2. क्लियर/एन्हांस फ़िल्टर
         if enhance == 'on':
             enhance_audio(raw_audio, final_audio)
         else:
             final_audio = raw_audio
 
+        # 3. MP3 या MP4 आउटपुट
         if format_type == 'audio':
             return send_file(final_audio, as_attachment=True, download_name="chirag_story.mp3")
         else:
@@ -128,8 +133,8 @@ def generate():
             return send_file(video_file, as_attachment=True, download_name="chirag_story.mp4")
             
     except Exception as e:
-        print(f"Error: {str(e)}")
-        return str(e), 500
+        print(f"Generate Error: {str(e)}")
+        return f"Error: {str(e)}", 500
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=10000)
