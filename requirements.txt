@@ -2,3 +2,5 @@ flask
 edge-tts
 gunicorn
 moviepy==1.0.3
+elevenlabs
+requests
