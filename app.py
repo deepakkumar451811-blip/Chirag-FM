@@ -3,6 +3,10 @@ import os
 import subprocess
 from flask import Flask, render_template, request, send_file
 import edge_tts
+import static_ffmpeg
+
+# Static FFmpeg Auto-path
+static_ffmpeg.add_paths()
 
 app = Flask(__name__, template_folder='.')
 
@@ -20,10 +24,22 @@ PREVIEW_TEXTS = {
     'en_in_prabhat': "Welcome to Chirag FM audio stories."
 }
 
-async def generate_speech(text, voice_key, output_file):
+async def generate_speech(text, voice_key, rate, output_file):
     selected_voice = VOICES.get(voice_key, 'hi-IN-SwaraNeural')
-    communicate = edge_tts.Communicate(text, selected_voice)
+    rate_str = f"{rate}%" if rate.startswith(('-', '+')) else f"+{rate}%"
+    communicate = edge_tts.Communicate(text, selected_voice, rate=rate_str)
     await communicate.save(output_file)
+
+def enhance_audio(input_audio, output_audio):
+    cmd = [
+        'ffmpeg', '-y',
+        '-i', input_audio,
+        '-af', 'highpass=f=80, lowpass=f=12000, volume=1.5',
+        '-c:a', 'libmp3lame',
+        '-b:a', '192k',
+        output_audio
+    ]
+    subprocess.run(cmd, check=True)
 
 def create_character_video(audio_file, video_output, character_type):
     image_file = f"{character_type}.jpg"
@@ -69,38 +85,51 @@ def index():
 @app.route('/preview_voice', methods=['POST'])
 def preview_voice():
     voice_key = request.form.get('voice', 'hi_swara')
+    preview_raw = "static/preview_raw.mp3"
     preview_file = "static/preview.mp3"
     os.makedirs('static', exist_ok=True)
     
     text = PREVIEW_TEXTS.get(voice_key, "नमस्कार, चिराग एफएम में आपका स्वागत है।")
-    asyncio.run(generate_speech(text, voice_key, preview_file))
+    asyncio.run(generate_speech(text, voice_key, "+0", preview_raw))
+    enhance_audio(preview_raw, preview_file)
     
     return send_file(preview_file)
 
 @app.route('/generate', methods=['POST'])
 def generate():
-    text = request.form.get('text', '')
-    voice = request.form.get('voice', 'hi_swara')
-    character_type = request.form.get('character', 'anime')
-    format_type = request.form.get('format_type', 'video')
-    
-    if not text:
-        return "कृपया स्टोरी या टेक्स्ट दर्ज करें!", 400
+    try:
+        text = request.form.get('text', '')
+        voice = request.form.get('voice', 'hi_swara')
+        character_type = request.form.get('character', 'anime')
+        format_type = request.form.get('format_type', 'video')
+        speed = request.form.get('speed', '0')
+        enhance = request.form.get('enhance', 'off')
+        
+        if not text:
+            return "कृपया स्टोरी या टेक्स्ट दर्ज करें!", 400
 
-    audio_file = "static/chirag_story.mp3"
-    video_file = "static/chirag_story.mp4"
-    
-    os.makedirs('static', exist_ok=True)
+        raw_audio = "static/raw.mp3"
+        final_audio = "static/chirag_story.mp3"
+        video_file = "static/chirag_story.mp4"
+        
+        os.makedirs('static', exist_ok=True)
 
-    # 1. ऑडियो जनरेट करें
-    asyncio.run(generate_speech(text, voice, audio_file))
-    
-    # 2. अगर MP3 चुना है तो सीधा ऑडियो भेजो, वरना वीडियो बनाकर भेजो
-    if format_type == 'audio':
-        return send_file(audio_file, as_attachment=True, download_name="chirag_story.mp3")
-    else:
-        create_character_video(audio_file, video_file, character_type)
-        return send_file(video_file, as_attachment=True, download_name="chirag_story.mp4")
+        asyncio.run(generate_speech(text, voice, speed, raw_audio))
+        
+        if enhance == 'on':
+            enhance_audio(raw_audio, final_audio)
+        else:
+            final_audio = raw_audio
+
+        if format_type == 'audio':
+            return send_file(final_audio, as_attachment=True, download_name="chirag_story.mp3")
+        else:
+            create_character_video(final_audio, video_file, character_type)
+            return send_file(video_file, as_attachment=True, download_name="chirag_story.mp4")
+            
+    except Exception as e:
+        print(f"Error: {str(e)}")
+        return str(e), 500
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=10000)
