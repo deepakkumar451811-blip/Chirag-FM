@@ -1,12 +1,8 @@
 import asyncio
 import os
-import subprocess
 from flask import Flask, render_template, request, send_file
 import edge_tts
-import static_ffmpeg
-
-# Static FFmpeg Auto-path
-static_ffmpeg.add_paths()
+from moviepy.editor import AudioFileClip, ColorClip
 
 app = Flask(__name__, template_folder='.')
 
@@ -30,51 +26,25 @@ async def generate_speech(text, voice_key, rate, output_file):
     communicate = edge_tts.Communicate(text, selected_voice, rate=rate_str)
     await communicate.save(output_file)
 
-def enhance_audio(input_audio, output_audio):
-    cmd = [
-        'ffmpeg', '-y',
-        '-i', input_audio,
-        '-af', 'volume=1.5',
-        '-c:a', 'libmp3lame',
-        '-b:a', '192k',
-        output_audio
-    ]
-    subprocess.run(cmd, check=True)
-
-def create_character_video(audio_file, video_output, character_type):
-    image_file = f"{character_type}.jpg"
+def create_fast_video(audio_file, video_output, character_type):
+    audio_clip = AudioFileClip(audio_file)
+    bg_color = (26, 13, 43) if character_type == 'anime' else (13, 26, 43)
     
-    if os.path.exists(image_file):
-        cmd = [
-            'ffmpeg', '-y',
-            '-loop', '1',
-            '-i', image_file,
-            '-i', audio_file,
-            '-c:v', 'libx264',
-            '-tune', 'stillimage',
-            '-c:a', 'aac',
-            '-b:a', '192k',
-            '-pix_fmt', 'yuv420p',
-            '-shortest',
-            video_output
-        ]
-    else:
-        # क्रैश-प्रूफ कलर बैकग्राउंड (बिना ड्रॉटेक्स्ट रिस्क के)
-        bg_color = "0x1a0d2b" if character_type == 'anime' else "0x0d1a2b"
-        cmd = [
-            'ffmpeg', '-y',
-            '-f', 'lavfi',
-            '-i', f'color=c={bg_color}:s=720x1280:r=25',
-            '-i', audio_file,
-            '-c:v', 'libx264',
-            '-c:a', 'aac',
-            '-b:a', '192k',
-            '-pix_fmt', 'yuv420p',
-            '-shortest',
-            video_output
-        ]
-        
-    subprocess.run(cmd, check=True)
+    # हल्का रंगीन बैकग्राउंड वीडियो
+    video_clip = ColorClip(size=(720, 1280), color=bg_color, duration=audio_clip.duration)
+    video_clip = video_clip.set_audio(audio_clip)
+    
+    # फास्ट रेंडरिंग (अटकने से बचाने के लिए)
+    video_clip.write_videofile(
+        video_output, 
+        fps=1, 
+        codec='libx264', 
+        audio_codec='aac', 
+        preset='ultrafast',
+        logger=None
+    )
+    audio_clip.close()
+    video_clip.close()
 
 @app.route('/')
 def index():
@@ -84,17 +54,13 @@ def index():
 def preview_voice():
     try:
         voice_key = request.form.get('voice', 'hi_swara')
-        preview_raw = "static/preview_raw.mp3"
         preview_file = "static/preview.mp3"
         os.makedirs('static', exist_ok=True)
         
         text = PREVIEW_TEXTS.get(voice_key, "नमस्कार, चिराग एफएम में आपका स्वागत है।")
-        asyncio.run(generate_speech(text, voice_key, "+0", preview_raw))
-        enhance_audio(preview_raw, preview_file)
-        
+        asyncio.run(generate_speech(text, voice_key, "+0", preview_file))
         return send_file(preview_file)
     except Exception as e:
-        print(f"Preview Error: {str(e)}")
         return str(e), 500
 
 @app.route('/generate', methods=['POST'])
@@ -105,35 +71,26 @@ def generate():
         character_type = request.form.get('character', 'anime')
         format_type = request.form.get('format_type', 'video')
         speed = request.form.get('speed', '0')
-        enhance = request.form.get('enhance', 'off')
         
         if not text:
             return "कृपया स्टोरी या टेक्स्ट दर्ज करें!", 400
 
-        raw_audio = "static/raw.mp3"
-        final_audio = "static/chirag_story.mp3"
+        audio_file = "static/chirag_story.mp3"
         video_file = "static/chirag_story.mp4"
         
         os.makedirs('static', exist_ok=True)
 
-        # 1. ऑडियो जनरेट करें
-        asyncio.run(generate_speech(text, voice, speed, raw_audio))
-        
-        # 2. क्लियर/एन्हांस फ़िल्टर
-        if enhance == 'on':
-            enhance_audio(raw_audio, final_audio)
-        else:
-            final_audio = raw_audio
+        # 1. ऑडियो बनाएँ
+        asyncio.run(generate_speech(text, voice, speed, audio_file))
 
-        # 3. MP3 या MP4 आउटपुट
+        # 2. MP3 या MP4 डाउनलोड भेजें
         if format_type == 'audio':
-            return send_file(final_audio, as_attachment=True, download_name="chirag_story.mp3")
+            return send_file(audio_file, as_attachment=True, download_name="chirag_story.mp3")
         else:
-            create_character_video(final_audio, video_file, character_type)
+            create_fast_video(audio_file, video_file, character_type)
             return send_file(video_file, as_attachment=True, download_name="chirag_story.mp4")
             
     except Exception as e:
-        print(f"Generate Error: {str(e)}")
         return f"Error: {str(e)}", 500
 
 if __name__ == '__main__':
