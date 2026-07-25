@@ -4,7 +4,7 @@ import subprocess
 from flask import Flask, render_template, request, send_file
 import edge_tts
 
-app = Flask(__name__)
+app = Flask(__name__, template_folder='.')
 
 VOICES = {
     'hi_female': 'hi-IN-SwaraNeural',
