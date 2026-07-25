@@ -20,6 +20,7 @@
         .spinner { border: 4px solid #333; border-top: 4px solid #ff4757; border-radius: 50%; width: 35px; height: 35px; animation: spin 1s linear infinite; margin: auto; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
         #statusText { margin-top: 10px; color: #ff4757; font-weight: bold; }
+        .checkbox-label { display: flex; align-items: center; justify-content: space-between; margin-top: 15px; background: #2b2b2b; padding: 10px; border-radius: 8px; }
     </style>
 </head>
 <body>
@@ -42,6 +43,18 @@
         <button type="button" class="preview-btn" onclick="playVoicePreview()">🔊 चुने हुए आवाज़ का सैंपल सुनें</button>
         <audio id="audioPlayer" controls></audio>
 
+        <label>आवाज़ की स्पीड (Speed):</label>
+        <select name="speed">
+            <option value="0">Normal (सामान्य)</option>
+            <option value="-10">Slow (-10% धीमा)</option>
+            <option value="+10">Fast (+10% तेज़)</option>
+        </select>
+
+        <div class="checkbox-label">
+            <span>✨ Studio Crystal Clear Enhance</span>
+            <input type="checkbox" name="enhance" value="on" checked style="width:auto; margin:0;">
+        </div>
+
         <label>आउटपुट फॉरमैट चुनें (Format):</label>
         <select name="format_type" id="formatSelect" onchange="toggleCharacterOption()">
             <option value="video">🎬 MP4 Video Story (कैरेक्टर के साथ)</option>
@@ -61,7 +74,7 @@
 
     <div id="loadingBox" class="loading-box">
         <div class="spinner"></div>
-        <p id="statusText">आपकी स्टोरी तैयार हो रही है (कृपया 15-30 सेकंड प्रतीक्षा करें)...</p>
+        <p id="statusText">आपकी स्टोरी तैयार हो रही है (कृपया 15-30 सेकंड रुकें)...</p>
     </div>
 </div>
 
@@ -134,7 +147,7 @@ function generateStory(e) {
         }, 3000);
     })
     .catch(err => {
-        alert("स्टोरी जनरेट करने में कोई समस्या आई। कृपया पुनः प्रयास करें!");
+        alert("स्टोरी जनरेट करने में समस्या आई। कृपया पुनः प्रयास करें!");
         submitBtn.style.display = 'block';
         loadingBox.style.display = 'none';
     });
