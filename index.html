@@ -1,50 +1,95 @@
-   <!DOCTYPE html>
+ <!DOCTYPE html>
 <html lang="hi">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Chirag FM - AI Video Story Generator</title>
+    <title>Chirag FM - AI Audio & Video Story Generator</title>
     <style>
-        body { font-family: Arial, sans-serif; background-color: #121212; color: #fff; padding: 20px; text-align: center; }
-        .container { max-width: 500px; margin: auto; background: #1e1e1e; padding: 20px; border-radius: 10px; }
-        textarea, select, button { width: 100%; margin-top: 10px; padding: 10px; border-radius: 5px; border: none; box-sizing: border-box; }
-        textarea { height: 100px; }
-        button { background-color: #ff4757; color: white; font-weight: bold; cursor: pointer; }
-        .preview-btn { background-color: #2ed573; margin-top: 5px; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #121212; color: #fff; padding: 20px; text-align: center; }
+        .container { max-width: 480px; margin: auto; background: #1e1e1e; padding: 25px; border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.5); }
+        h2 { color: #ff4757; margin-bottom: 20px; }
+        label { display: block; text-align: left; margin-top: 12px; font-weight: bold; font-size: 14px; color: #ccc; }
+        textarea, select, button { width: 100%; margin-top: 6px; padding: 12px; border-radius: 8px; border: none; box-sizing: border-box; font-size: 15px; }
+        textarea { height: 110px; background: #2b2b2b; color: #fff; resize: vertical; }
+        select { background: #2b2b2b; color: #fff; }
+        .gen-btn { background-color: #ff4757; color: white; font-weight: bold; cursor: pointer; margin-top: 20px; transition: 0.3s; }
+        .gen-btn:hover { background-color: #ff6b81; }
+        .preview-btn { background-color: #2ed573; color: white; font-weight: bold; cursor: pointer; margin-top: 8px; }
         audio { width: 100%; margin-top: 10px; display: none; }
+        
+        /* Loading Animation Style */
+        .loading-box { display: none; margin-top: 20px; padding: 15px; background: #2b2b2b; border-radius: 10px; }
+        .spinner { border: 4px solid #333; border-top: 4px solid #ff4757; border-radius: 50%; width: 35px; height: 35px; animation: spin 1s linear infinite; margin: auto; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <h2>📻 Chirag FM Story Generator</h2>
+    <h2>📻 Chirag FM Story Studio</h2>
     
-    <form action="/generate" method="POST">
-        <label>अपनी कहानी दर्ज करें:</label>
+    <form id="storyForm" action="/generate" method="POST" onsubmit="showLoading()">
+        <label>अपनी कहानी लिखें:</label>
         <textarea name="text" placeholder="यहाँ अपनी कहानी लिखें..." required></textarea>
         
         <label>आवाज़ चुनें (Voice):</label>
         <select name="voice" id="voiceSelect">
             <option value="hi_swara">Hindi Female (Swara - क्लियर आवाज़)</option>
             <option value="hi_madhur">Hindi Male (Madhur - भारी/सिनेमैटिक)</option>
-            <option value="en_in_neerja">Indian Storyteller Female (Neerja)</option>
-            <option value="en_in_prabhat">Indian Male News Anchor (Prabhat)</option>
+            <option value="en_in_neerja">Indian Female (Neerja)</option>
+            <option value="en_in_prabhat">Indian Male (Prabhat)</option>
         </select>
 
         <button type="button" class="preview-btn" onclick="playVoicePreview()">🔊 चुने हुए आवाज़ का सैंपल सुनें</button>
         <audio id="audioPlayer" controls></audio>
 
-        <label style="margin-top:15px; display:block;">कैरेक्टर चुनें:</label>
-        <select name="character">
-            <option value="anime">Anime Style Character</option>
-            <option value="human">Human Cinematic Style</option>
+        <label>आउटपुट फॉरमैट चुनें (Format):</label>
+        <select name="format_type" id="formatSelect" onchange="toggleCharacterOption()">
+            <option value="video">🎬 MP4 Video Story (कैरेक्टर के साथ)</option>
+            <option value="audio">🎵 MP3 Audio Story (केवल आवाज़)</option>
         </select>
 
-        <button type="submit">🚀 Video Generate & Download</button>
+        <div id="characterDiv">
+            <label>कैरेक्टर स्टाइल:</label>
+            <select name="character">
+                <option value="anime">Anime Style Character</option>
+                <option value="human">Human Cinematic Style</option>
+            </select>
+        </div>
+
+        <button type="submit" id="submitBtn" class="gen-btn">🚀 Generat & Download Story</button>
     </form>
+
+    <!-- Loading Box -->
+    <div id="loadingBox" class="loading-box">
+        <div class="spinner"></div>
+        <p style="margin-top: 10px; color: #ff4757; font-weight: bold;">आपकी स्टोरी तैयार हो रही है...</p>
+        <small style="color: #aaa;">(कृपया रुकें, डाउनलोड अपने आप शुरू हो जाएगा)</small>
+    </div>
 </div>
 
 <script>
+function toggleCharacterOption() {
+    var format = document.getElementById('formatSelect').value;
+    var charDiv = document.getElementById('characterDiv');
+    if(format === 'audio') {
+        charDiv.style.display = 'none';
+    } else {
+        charDiv.style.display = 'block';
+    }
+}
+
+function showLoading() {
+    document.getElementById('submitBtn').style.display = 'none';
+    document.getElementById('loadingBox').style.display = 'block';
+    
+    // डाउनलोड शुरू होने के थोड़ी देर बाद बटन वापस रिसेट कर देगा
+    setTimeout(function() {
+        document.getElementById('submitBtn').style.display = 'block';
+        document.getElementById('loadingBox').style.display = 'none';
+    }, 12000);
+}
+
 function playVoicePreview() {
     var voice = document.getElementById('voiceSelect').value;
     var formData = new FormData();
@@ -74,4 +119,4 @@ function playVoicePreview() {
 </script>
 
 </body>
-</html>     
+</html>          
