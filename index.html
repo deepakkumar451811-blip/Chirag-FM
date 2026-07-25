@@ -1,97 +1,77 @@
-<!DOCTYPE html>
+   <!DOCTYPE html>
 <html lang="hi">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DKLR AI Voice Studio</title>
+    <title>Chirag FM - AI Video Story Generator</title>
     <style>
-        body {
-            font-family: 'Poppins', sans-serif;
-            background-color: #0d0d11;
-            color: #ffffff;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            min-height: 100vh;
-            margin: 0;
-            padding: 15px;
-        }
-        .container {
-            background: #181824;
-            padding: 25px;
-            border-radius: 16px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.8);
-            width: 100%;
-            max-width: 500px;
-            border: 1px solid #2a2a3d;
-        }
-        .logo { text-align: center; font-size: 24px; font-weight: bold; color: #ff9800; margin-bottom: 5px; }
-        .subtitle { text-align: center; color: #888; font-size: 13px; margin-bottom: 20px; }
-        label { font-size: 13px; color: #aaa; display: block; margin-top: 14px; font-weight: 500; }
-        textarea, select, input[type="file"], button {
-            width: 100%;
-            padding: 12px;
-            margin-top: 6px;
-            border-radius: 8px;
-            border: 1px solid #333;
-            box-sizing: border-box;
-            font-size: 14px;
-            background: #222233;
-            color: #fff;
-        }
-        textarea { height: 100px; resize: vertical; }
-        button {
-            background: linear-gradient(135deg, #ff9800, #e65100);
-            color: #fff;
-            font-weight: bold;
-            border: none;
-            cursor: pointer;
-            margin-top: 22px;
-            font-size: 16px;
-            box-shadow: 0 4px 15px rgba(255, 152, 0, 0.3);
-        }
-        button:hover { opacity: 0.9; }
-        .badge { background: #ff9800; color: #000; padding: 2px 6px; border-radius: 4px; font-size: 10px; font-weight: bold; vertical-align: middle; }
+        body { font-family: Arial, sans-serif; background-color: #121212; color: #fff; padding: 20px; text-align: center; }
+        .container { max-width: 500px; margin: auto; background: #1e1e1e; padding: 20px; border-radius: 10px; }
+        textarea, select, button { width: 100%; margin-top: 10px; padding: 10px; border-radius: 5px; border: none; box-sizing: border-box; }
+        textarea { height: 100px; }
+        button { background-color: #ff4757; color: white; font-weight: bold; cursor: pointer; }
+        .preview-btn { background-color: #2ed573; margin-top: 5px; }
+        audio { width: 100%; margin-top: 10px; display: none; }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <div class="logo">🎙️ DKLR AI VOICE</div>
-    <div class="subtitle">Pocket FM Style Story & Video Generator</div>
+    <h2>📻 Chirag FM Story Generator</h2>
     
-    <form action="/generate" method="POST" enctype="multipart/form-data">
-        <label>कहानी की स्क्रिप्ट लिखें (Script):</label>
-        <textarea name="text" placeholder="यहाँ अपनी कहानी या डायलॉग लिखें..." required></textarea>
-
-        <label>AI आवाज़ चुनिए (Voice Selection):</label>
-        <select name="voice">
-            <option value="hi_male">🎙️ Hindi - Madhur (Pocket FM Male Storyteller)</option>
-            <option value="hi_female">🎙️ Hindi - Swara (Emotional Female Voice)</option>
-            <option value="en_male">🎙️ English - Guy (Male Voice)</option>
-            <option value="en_female">🎙️ English - Jenny (Female Voice)</option>
+    <form action="/generate" method="POST">
+        <label>अपनी कहानी दर्ज करें:</label>
+        <textarea name="text" placeholder="यहाँ अपनी कहानी लिखें..." required></textarea>
+        
+        <label>आवाज़ चुनें (Voice):</label>
+        <select name="voice" id="voiceSelect">
+            <option value="hi_swara">Hindi Female (Swara - क्लियर आवाज़)</option>
+            <option value="hi_madhur">Hindi Male (Madhur - भारी/सिनेमैटिक)</option>
+            <option value="en_in_neerja">Indian Storyteller Female (Neerja)</option>
+            <option value="en_in_prabhat">Indian Male News Anchor (Prabhat)</option>
         </select>
 
-        <label>🎙️ Voice Cloning (अपनी या किसी की आवाज़ अपलोड करें) <span class="badge">NEW</span>:</label>
-        <input type="file" name="clone_audio" accept="audio/*">
+        <button type="button" class="preview-btn" onclick="playVoicePreview()">🔊 चुने हुए आवाज़ का सैंपल सुनें</button>
+        <audio id="audioPlayer" controls></audio>
 
-        <label>🎬 एनिमेटेड कैरेक्टर चुनें (Character Style):</label>
+        <label style="margin-top:15px; display:block;">कैरेक्टर चुनें:</label>
         <select name="character">
-            <option value="human">🧍‍♂️ Realistic Human Avatar (3D Cinematic)</option>
-            <option value="anime">🦸‍♂️ Anime Character (Japanese Manga Style)</option>
-            <option value="poster">🖼️ Pocket FM Studio Official Poster</option>
+            <option value="anime">Anime Style Character</option>
+            <option value="human">Human Cinematic Style</option>
         </select>
 
-        <label>📦 आउटपुट फॉर्मेट (Output Format):</label>
-        <select name="format">
-            <option value="mp3">🎵 MP3 Audio (Pure Voice)</option>
-            <option value="mp3_bgm">🎶 MP3 Audio + Story BGM (Pocket FM Style)</option>
-            <option value="mp4_video">🎬 MP4 Character Animated Story Video</option>
-        </select>
-
-        <button type="submit">🚀 Generate DKLR Story Video</button>
+        <button type="submit">🚀 Video Generate & Download</button>
     </form>
 </div>
 
+<script>
+function playVoicePreview() {
+    var voice = document.getElementById('voiceSelect').value;
+    var formData = new FormData();
+    formData.append('voice', voice);
+
+    var btn = document.querySelector('.preview-btn');
+    btn.innerText = "⏳ आवाज़ लोड हो रही है...";
+
+    fetch('/preview_voice', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.blob())
+    .then(blob => {
+        var audioUrl = URL.createObjectURL(blob);
+        var player = document.getElementById('audioPlayer');
+        player.src = audioUrl;
+        player.style.display = 'block';
+        player.play();
+        btn.innerText = "🔊 चुने हुए आवाज़ का सैंपल सुनें";
+    })
+    .catch(err => {
+        alert('ऑडियो लोड करने में समस्या आई!');
+        btn.innerText = "🔊 चुने हुए आवाज़ का सैंपल सुनें";
+    });
+}
+</script>
+
 </body>
-</html>
+</html>     
