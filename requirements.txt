@@ -1,4 +1,4 @@
 flask
 edge-tts
 gunicorn
-static-ffmpeg
+moviepy==1.0.3
