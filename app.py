@@ -1,7 +1,7 @@
 import asyncio
 import os
 import subprocess
-from flask import Flask, render_template, request, send_file, jsonify
+from flask import Flask, render_template, request, send_file
 import edge_tts
 
 app = Flask(__name__, template_folder='.')
@@ -82,19 +82,25 @@ def generate():
     text = request.form.get('text', '')
     voice = request.form.get('voice', 'hi_swara')
     character_type = request.form.get('character', 'anime')
+    format_type = request.form.get('format_type', 'video')
     
     if not text:
         return "कृपया स्टोरी या टेक्स्ट दर्ज करें!", 400
 
-    audio_file = "output.mp3"
-    video_file = "static/output.mp4"
+    audio_file = "static/chirag_story.mp3"
+    video_file = "static/chirag_story.mp4"
     
     os.makedirs('static', exist_ok=True)
 
+    # 1. ऑडियो जनरेट करें
     asyncio.run(generate_speech(text, voice, audio_file))
-    create_character_video(audio_file, video_file, character_type)
     
-    return send_file(video_file, as_attachment=True)
+    # 2. अगर MP3 चुना है तो सीधा ऑडियो भेजो, वरना वीडियो बनाकर भेजो
+    if format_type == 'audio':
+        return send_file(audio_file, as_attachment=True, download_name="chirag_story.mp3")
+    else:
+        create_character_video(audio_file, video_file, character_type)
+        return send_file(video_file, as_attachment=True, download_name="chirag_story.mp4")
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=10000)
