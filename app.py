@@ -1,87 +1,100 @@
 import asyncio
 import os
 import subprocess
-from flask import Flask, render_template, request, send_file
+from flask import Flask, render_template, request, send_file, jsonify
 import edge_tts
 
 app = Flask(__name__, template_folder='.')
 
 VOICES = {
-    'hi_female': 'hi-IN-SwaraNeural',
-    'hi_male': 'hi-IN-MadhurNeural',
-    'en_female': 'en-US-JennyNeural',
-    'en_male': 'en-US-GuyNeural'
+    'hi_swara': 'hi-IN-SwaraNeural',
+    'hi_madhur': 'hi-IN-MadhurNeural',
+    'en_in_neerja': 'en-IN-NeerjaNeural',
+    'en_in_prabhat': 'en-IN-PrabhatNeural'
+}
+
+PREVIEW_TEXTS = {
+    'hi_swara': "नमस्कार, चिराग एफएम पर आपका स्वागत है।",
+    'hi_madhur': "नमस्कार, चिराग एफएम पर आपकी पसंदीदा कहानी शुरू होने वाली है।",
+    'en_in_neerja': "Hello and welcome to Chirag FM stories.",
+    'en_in_prabhat': "Welcome to Chirag FM audio stories."
 }
 
 async def generate_speech(text, voice_key, output_file):
-    selected_voice = VOICES.get(voice_key, 'hi-IN-MadhurNeural')
+    selected_voice = VOICES.get(voice_key, 'hi-IN-SwaraNeural')
     communicate = edge_tts.Communicate(text, selected_voice)
     await communicate.save(output_file)
 
 def create_character_video(audio_file, video_output, character_type):
-    # Dynamic character background generation using FFmpeg canvas & text overlay
-    if character_type == 'anime':
-        bg_color = "darkblue"
-        char_title = "DKLR ANIME STORY"
-    elif character_type == 'human':
-        bg_color = "#1a0000"
-        char_title = "DKLR HUMAN CINEMATIC"
+    image_file = f"{character_type}.jpg"
+    
+    if os.path.exists(image_file):
+        cmd = [
+            'ffmpeg', '-y',
+            '-loop', '1',
+            '-i', image_file,
+            '-i', audio_file,
+            '-c:v', 'libx264',
+            '-tune', 'stillimage',
+            '-c:a', 'aac',
+            '-b:a', '192k',
+            '-pix_fmt', 'yuv420p',
+            '-shortest',
+            video_output
+        ]
     else:
-        bg_color = "#111111"
-        char_title = "DKLR AUDIO STORY"
-
-    cmd = (
-        f"ffmpeg -y -f lavfi -i color=c={bg_color}:s=720x1280:r=1 "
-        f"-i {audio_file} "
-        f"-vf \"drawtext=text='{char_title}':fontcolor=orange:fontsize=36:x=(w-text_w)/2:y=200,"
-        f"drawtext=text='POCKET FM STYLE':fontcolor=white:fontsize=24:x=(w-text_w)/2:y=260\" "
-        f"-c:v libx264 -preset ultrafast -tune stillimage -c:a copy -shortest {video_output}"
-    )
-    subprocess.run(cmd, shell=True, check=True)
+        bg_color = "0x1a0d2b" if character_type == 'anime' else "0x0d1a2b"
+        title_text = "DKLR ANIME STORY" if character_type == 'anime' else "DKLR HUMAN STORY"
+        
+        cmd = [
+            'ffmpeg', '-y',
+            '-f', 'lavfi',
+            '-i', f'color=c={bg_color}:s=720x1280:r=25',
+            '-i', audio_file,
+            '-vf', f"drawtext=text='{title_text}':fontcolor=white:fontsize=40:x=(w-text_w)/2:y=(h-text_h)/2",
+            '-c:v', 'libx264',
+            '-c:a', 'aac',
+            '-b:a', '192k',
+            '-pix_fmt', 'yuv420p',
+            '-shortest',
+            video_output
+        ]
+        
+    subprocess.run(cmd, check=True)
 
 @app.route('/')
-def home():
+def index():
     return render_template('index.html')
+
+@app.route('/preview_voice', methods=['POST'])
+def preview_voice():
+    voice_key = request.form.get('voice', 'hi_swara')
+    preview_file = "static/preview.mp3"
+    os.makedirs('static', exist_ok=True)
+    
+    text = PREVIEW_TEXTS.get(voice_key, "नमस्कार, चिराग एफएम में आपका स्वागत है।")
+    asyncio.run(generate_speech(text, voice_key, preview_file))
+    
+    return send_file(preview_file)
 
 @app.route('/generate', methods=['POST'])
 def generate():
     text = request.form.get('text', '')
-    voice = request.form.get('voice', 'hi_male')
-    fmt = request.form.get('format', 'mp3')
-    character = request.form.get('character', 'human')
+    voice = request.form.get('voice', 'hi_swara')
+    character_type = request.form.get('character', 'anime')
     
-    if not text.strip():
-        return "Kripya text enter karein!", 400
+    if not text:
+        return "कृपया स्टोरी या टेक्स्ट दर्ज करें!", 400
 
-    audio_file = "temp_audio.mp3"
+    audio_file = "output.mp3"
+    video_file = "static/output.mp4"
     
-    # Handle Voice Cloning File Upload if provided
-    clone_file = request.files.get('clone_audio')
-    if clone_file and clone_file.filename != '':
-        clone_path = "cloned_sample.mp3"
-        clone_file.save(clone_path)
-        # TTS with reference audio fallback
-        asyncio.run(generate_speech(text, voice, audio_file))
-    else:
-        asyncio.run(generate_speech(text, voice, audio_file))
+    os.makedirs('static', exist_ok=True)
 
-    if fmt == 'mp3':
-        return send_file(audio_file, as_attachment=True, download_name="DKLR_Voice.mp3")
-
-    elif fmt == 'mp3_bgm':
-        return send_file(audio_file, as_attachment=True, download_name="DKLR_Story_PocketFM.mp3")
-
-    else:
-        video_file = "DKLR_AI_Story_Video.mp4"
-        try:
-            create_character_video(audio_file, video_file, character)
-            if os.path.exists(video_file):
-                return send_file(video_file, as_attachment=True, download_name="DKLR_AI_Story.mp4")
-            else:
-                return "Video generate nahi ho paya!", 500
-        except Exception as e:
-            return f"Error: {str(e)}", 500
+    asyncio.run(generate_speech(text, voice, audio_file))
+    create_character_video(audio_file, video_file, character_type)
+    
+    return send_file(video_file, as_attachment=True)
 
 if __name__ == '__main__':
-    print("DKLR AI VOICE Studio Start Ho Raha Hai...")
-    app.run(host='0.0.0.0', port=5000, debug=True)
+    app.run(host='0.0.0.0', port=10000)
